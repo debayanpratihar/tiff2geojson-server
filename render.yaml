@@ -19,4 +19,4 @@ databases:
   - name: tiff2geojson-db
     databaseName: tiff2geojson
     user: tiff2geojson_user
-    plan: free
+    plan: free  # Start with free tier
