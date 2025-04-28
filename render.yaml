@@ -1,0 +1,19 @@
+services:
+  - type: web
+    name: tiff2geojson-server
+    runtime: docker
+    env: python
+    build:
+      dockerfile: Dockerfile
+    envVars:
+      - key: DATABASE_URL
+        value: postgresql://user:password@postgres:5432/license_db
+      - key: SECRET_KEY
+        generateValue: true
+    healthCheckPath: /
+    autoDeploy: true
+
+databases:
+  - name: postgres
+    databaseName: license_db
+    user: user
