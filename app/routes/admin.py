@@ -1,33 +1,32 @@
 from fastapi import APIRouter, Depends, HTTPException, Security
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
-from ..database import get_db
-from .. import schemas, crud, security
+from . import schemas, crud
+from .dependencies import get_db, validate_admin_token
 
-router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
-security_scheme = HTTPBearer()
+router = APIRouter(prefix="/admin", tags=["admin"])
+security = HTTPBearer()
 
-def get_current_admin(credentials: HTTPAuthorizationCredentials = Security(security_scheme)):
-    token = credentials.credentials
-    payload = security.verify_token(token)
-    if not payload or payload.get("role") != "admin":
-        raise HTTPException(status_code=403, detail="Not authorized")
-    return payload
-
-@router.post("/licenses", response_model=schemas.LicenseResponse)
+@router.post("/licenses", response_model=schemas.License)
 def create_license(
     license: schemas.LicenseCreate,
     db: Session = Depends(get_db),
-    admin: dict = Depends(get_current_admin)
+    credentials: HTTPAuthorizationCredentials = Security(security)
 ):
+    if not validate_admin_token(credentials.credentials):
+        raise HTTPException(status_code=403, detail="Invalid admin token")
+    
     return crud.create_license(db, license)
 
 @router.post("/block-version")
 def block_version(
-    version: str,
-    reason: str,
+    request: schemas.BlockVersionRequest,
     db: Session = Depends(get_db),
-    admin: dict = Depends(get_current_admin)
+    credentials: HTTPAuthorizationCredentials = Security(security)
 ):
-    blocked = crud.block_version(db, version, reason)
-    return {"status": "blocked" if blocked else "already blocked"}
+    if not validate_admin_token(credentials.credentials):
+        raise HTTPException(status_code=403, detail="Invalid admin token")
+    
+    if crud.block_version(db, request.version, request.reason):
+        return {"status": "version blocked"}
+    return {"status": "version already blocked"}

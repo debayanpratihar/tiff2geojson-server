@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey
 from .database import Base
-from datetime import datetime
+from datetime import datetime, timedelta
 
 class License(Base):
     __tablename__ = "licenses"
@@ -11,7 +11,7 @@ class License(Base):
     is_active = Column(Boolean, default=True)
     max_devices = Column(Integer, default=1)
     created_at = Column(DateTime, default=datetime.utcnow)
-    expiry_date = Column(DateTime, nullable=True)
+    expiry_date = Column(DateTime, default=lambda: datetime.utcnow() + timedelta(days=365))
 
 class Device(Base):
     __tablename__ = "devices"

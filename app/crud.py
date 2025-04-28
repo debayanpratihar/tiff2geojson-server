@@ -1,13 +1,12 @@
 from sqlalchemy.orm import Session
-from . import models, schemas
+from . import models
 from datetime import datetime, timedelta
 
 def create_license(db: Session, license: schemas.LicenseCreate):
     db_license = models.License(
         license_key=license.license_key,
         owner_email=license.owner_email,
-        max_devices=license.max_devices,
-        expiry_date=license.expiry_date
+        max_devices=license.max_devices
     )
     db.add(db_license)
     db.commit()
@@ -23,7 +22,7 @@ def activate_license(db: Session, request: schemas.ActivationRequest):
     if not license:
         return None
         
-    # Check if device is already registered
+    # Check if device exists
     device = db.query(models.Device).filter(
         models.Device.license_id == license.id,
         models.Device.device_id == request.device_id
@@ -38,29 +37,34 @@ def activate_license(db: Session, request: schemas.ActivationRequest):
         if device_count >= license.max_devices:
             return None
             
-        # Register new device
         device = models.Device(
             license_id=license.id,
             device_id=request.device_id,
             app_version=request.app_version
         )
         db.add(device)
-        db.commit()
     
-    # Update last active time
     device.last_active = datetime.utcnow()
     db.commit()
     
-    # Calculate expiry (30 days from now or license expiry)
-    expiry = license.expiry_date or datetime.utcnow() + timedelta(days=30)
-    
     return {
-        "token": f"token_{license.id}_{device.id}",
-        "expiry": expiry,
-        "status": "activated"
+        "token": f"valid_{license.id}_{device.id}",
+        "expiry": license.expiry_date,
+        "status": "active"
     }
 
-def check_blocked_version(db: Session, version: str):
-    return db.query(models.BlockedVersion).filter(
+def block_version(db: Session, version: str, reason: str):
+    existing = db.query(models.BlockedVersion).filter(
         models.BlockedVersion.version == version
     ).first()
+    
+    if existing:
+        return False
+        
+    blocked = models.BlockedVersion(
+        version=version,
+        reason=reason
+    )
+    db.add(blocked)
+    db.commit()
+    return True

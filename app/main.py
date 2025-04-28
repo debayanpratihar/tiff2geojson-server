@@ -1,21 +1,18 @@
-from fastapi import FastAPI, Depends
-from .database import SessionLocal
+from fastapi import FastAPI
+from .database import engine, Base
 from .routes import licenses, admin
 
-app = FastAPI()
+Base.metadata.create_all(bind=engine)
 
-# Include routers
-app.include_router(licenses.router)
-app.include_router(admin.router)
+app = FastAPI(
+    title="TIFF2GeoJSON License Server",
+    description="License management server for TIFF2GeoJSON software",
+    version="1.0.0"
+)
+
+app.include_router(licenses.router, prefix="/api/v1")
+app.include_router(admin.router, prefix="/api/v1/admin")
 
 @app.get("/")
-def read_root():
-    return {"message": "TIFF2GeoJSON License Server"}
-
-# Dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+def root():
+    return {"message": "TIFF2GeoJSON License Server is running"}
